@@ -4,7 +4,7 @@ module riscv_wb(
 	input		[`MemDataBus]	data_i,
 	input		[`RegBus]	data_addr_i,
 	input				data_we_i,
-	input				mem2reg_i,
+	input				data_re_i,
 	output	reg	[`RegBus]	rd_val_o
 );
 
@@ -12,7 +12,7 @@ module riscv_wb(
 // Mux
 //-------------------------------------------------------------
 always @(*) begin
-	if (mem2reg_i == 1'b1) begin
+	if (data_re_i == 1'b1) begin
 		rd_val_o = data_i;
 	end else begin
 		rd_val_o = data_addr_i;
