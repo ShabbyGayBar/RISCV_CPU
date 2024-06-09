@@ -7,6 +7,7 @@
 `include "riscv_id_ex.v"
 `include "riscv_ex_mem.v"
 `include "riscv_mem_wb.v"
+`include "riscv_stall.v"
 
 module riscv(
 	input	wire		clk,
@@ -25,14 +26,17 @@ module riscv(
 	output	wire	[31:0]	data_o		// data to data_mem
 );
 
+wire	[4:0]		stall;		// stall control
 wire			br_o_id;	// branch signal
 wire			br_i_ex;
+wire			br_o_ex;
 wire	[`InstAddrBus]	pc_i_ex;	// program counter
 wire	[`InstAddrBus]	pc_next;
 wire	[`RegBus]	rs1_val_id;	// register 1 value
 wire	[`RegBus]	rs2_val_id;	// register 2 value
 wire	[`RegAddrBus]	rs1_idx_id;	// register 1 index
 wire	[`RegAddrBus]	rs2_idx_id;	// register 2 index
+wire			rs_re_id;	// register read enable
 wire	[`RegAddrBus]	rd_idx_o_id;	// write register index
 wire	[`RegAddrBus]	rd_idx_ex;
 wire	[`RegAddrBus]	rd_idx_mem;
@@ -52,6 +56,8 @@ wire	[`RegBus]	offset_o_id;	// immediate value
 wire	[`RegBus]	offset_i_ex;
 wire			zero_en_o_id;	// jump if zero enable
 wire			zero_en_i_ex;
+wire	[`MemDataBus]	data_o_id;	// data to data memory
+wire	[`MemDataBus]	data_ex;
 wire			data_we_o_id;	// write enable to data memory
 wire			data_we_ex;
 wire			data_re_o_id;	// read data from data memory
@@ -68,7 +74,15 @@ assign	data_ce_o = 1;			// always enable data memory
 //--------------------------------------------------------------------
 // Stall control
 //--------------------------------------------------------------------
-// To be implemented
+riscv_stall STALL(
+	.rst(rst),
+	.req_if(1'b0),		// stall if branch instruction
+	.req_id(rs_re_id && data_re_ex && (rs1_idx_id == rd_idx_ex || rs2_idx_id == rd_idx_ex)),
+	// stall if register read && last instruction is load type && load data is not ready
+	.req_ex(br_o_ex),
+	.req_mem(1'b0),		// stall if load type instruction
+	.stall(stall)
+);
 
 //--------------------------------------------------------------------
 // Instruction Fetch Unit
@@ -76,12 +90,13 @@ assign	data_ce_o = 1;			// always enable data memory
 riscv_if IF(
 	.clk(clk),
 	.rst(rst),
-	.br_i(br_i_if),
+	.stall(stall),
+	.br_i(br_o_ex),
 	.pc_i(pc_next),
 	.pc_o(inst_addr_o)
 );
 
-// Stage IF already incoporated register IF-ID register
+// Stage IF already incoporated register IF-ID
 
 //--------------------------------------------------------------------
 // Instruction Decode Unit
@@ -93,6 +108,7 @@ riscv_id ID(
 	.rs2_val_i(rs2_val_id),
 	.rs1_idx_o(rs1_idx_id),
 	.rs2_idx_o(rs2_idx_id),
+	.rs_re_o(rs_re_id),
 	.rd_idx_o(rd_idx_o_id),
 	.rd_we_o(rd_we_o_id),
 	.alu_op_o(alu_op_o_id),
@@ -101,6 +117,7 @@ riscv_id ID(
 	.offset_o(offset_o_id),
 	.br_o(br_o_id),
 	.zero_en_o(zero_en_o_id),
+	.data_o(data_o_id),
 	.data_we_o(data_we_o_id),
 	.data_re_o(data_re_o_id)
 );
@@ -126,6 +143,7 @@ riscv_register REG(
 riscv_id_ex ID_EX(
 	.clk(clk),
 	.rst(rst),
+	.stall(stall),
 	.pc_i(inst_addr_o),
 	.rd_idx_i(rd_idx_o_id),
 	.rd_we_i(rd_we_o_id),
@@ -135,6 +153,7 @@ riscv_id_ex ID_EX(
 	.offset_i(offset_o_id),
 	.br_i(br_o_id),
 	.zero_en_i(zero_en_o_id),
+	.data_i(data_o_id),
 	.data_we_i(data_we_o_id),
 	.data_re_i(data_re_o_id),
 	.pc_o(pc_i_ex),
@@ -146,6 +165,7 @@ riscv_id_ex ID_EX(
 	.offset_o(offset_i_ex),
 	.br_o(br_i_ex),
 	.zero_en_o(zero_en_i_ex),
+	.data_o(data_ex),
 	.data_we_o(data_we_ex),
 	.data_re_o(data_re_ex)
 );
@@ -161,6 +181,7 @@ riscv_ex EX(
 	.offset_i(offset_i_ex),
 	.br_i(br_i_ex),
 	.zero_en_i(zero_en_i_ex),
+	.br_o(br_o_ex),
 	.pc_o(pc_next),
 	.data_addr_o(data_addr_o_ex)
 );
@@ -171,13 +192,16 @@ riscv_ex EX(
 riscv_ex_mem EX_MEM(
 	.clk(clk),
 	.rst(rst),
+	.stall(stall),
 	.rd_idx_i(rd_idx_ex),
 	.rd_we_i(rd_we_ex),
+	.data_i(data_ex),
 	.data_we_i(data_we_ex),
 	.data_re_i(data_re_ex),
 	.data_addr_i(data_addr_o_ex),
 	.rd_idx_o(rd_idx_mem),
 	.rd_we_o(rd_we_mem),
+	.data_o(data_o),
 	.data_we_o(data_we_o),
 	.data_re_o(data_re_mem),
 	.data_addr_o(data_addr_o)
@@ -189,6 +213,7 @@ riscv_ex_mem EX_MEM(
 riscv_mem_wb MEM_WB(
 	.clk(clk),
 	.rst(rst),
+	.stall(stall),
 	.rd_idx_i(rd_idx_mem),
 	.rd_we_i(rd_we_mem),
 	.data_addr_i(data_addr_o),

@@ -7,6 +7,7 @@ module riscv_id(
 	input		[`RegBus]	rs2_val_i,
 	output		[`RegAddrBus]	rs1_idx_o,
 	output		[`RegAddrBus]	rs2_idx_o,
+	output	reg			rs_re_o,
 	output		[`RegAddrBus]	rd_idx_o,
 	output	reg			rd_we_o,
 	output	reg	[`AluOpBus]	alu_op_o,
@@ -15,6 +16,7 @@ module riscv_id(
 	output	reg	[`RegBus]	offset_o,
 	output	reg			br_o,
 	output	reg			zero_en_o,
+	output		[`MemDataBus]	data_o,
 	output	reg			data_we_o,
 	output	reg			data_re_o
 );
@@ -40,6 +42,7 @@ assign	U_imm	= {inst_i[31:12], 12'b0};
 assign	rs1_idx_o	= inst_i[19:15];
 assign	rs2_idx_o	= inst_i[24:20];
 assign	rd_idx_o	= inst_i[11:7];
+assign	data_o		= rs2_val_i;
 
 always @(*) begin
 	alu_op_o	= `ALU_NONE;
@@ -48,6 +51,7 @@ always @(*) begin
 	offset_o	= 32'b0;
 	data_we_o	= 1'b0;
 	data_re_o	= 1'b0;
+	rs_re_o		= 1'b1;
 	rd_we_o		= 1'b1;
 	br_o		= 1'b0;
 	zero_en_o	= 1'b1;
@@ -171,6 +175,7 @@ always @(*) begin
 		alu_op_o	= `ALU_ADD;
 		alu_a_o		= pc_i;
 		alu_b_o		= 4;
+		rs_re_o		= 1'b0;
 		offset_o	= J_imm;
 		br_o		= 1'b1;
 		zero_en_o	= 1'b0;
@@ -183,11 +188,14 @@ always @(*) begin
 		zero_en_o	= 1'b0;
 	end*/ else if ((inst_i & `INST_LUI_MASK) == `INST_LUI) begin // lui
 		alu_op_o	= `ALU_ADD;
+		alu_a_o		= 32'b0;
 		alu_b_o		= U_imm;
+		rs_re_o		= 1'b0;
 	end else if ((inst_i & `INST_AUIPC_MASK) == `INST_AUIPC) begin // auipc
 		alu_op_o	= `ALU_ADD;
 		alu_a_o		= pc_i;
 		alu_b_o		= U_imm;
+		rs_re_o		= 1'b0;
 	end
 end
 

@@ -3,6 +3,7 @@
 module riscv_id_ex(
 	input				clk,
 	input				rst,
+	input		[4:0]		stall,
 	input		[`InstAddrBus]	pc_i,
 	input		[`RegAddrBus]	rd_idx_i,
 	input				rd_we_i,
@@ -12,6 +13,7 @@ module riscv_id_ex(
 	input		[`RegBus]	offset_i,
 	input				br_i,
 	input				zero_en_i,
+	input		[`MemDataBus]	data_i,
 	input				data_we_i,
 	input				data_re_i,
 	output	reg	[`InstAddrBus]	pc_o,
@@ -23,12 +25,13 @@ module riscv_id_ex(
 	output	reg	[`RegBus]	offset_o,
 	output	reg			br_o,
 	output	reg			zero_en_o,
+	output	reg	[`MemDataBus]	data_o,
 	output	reg			data_we_o,
 	output	reg			data_re_o
 );
 
 always @(posedge clk or posedge rst) begin
-	if (rst) begin
+	if (rst || (stall[1] && !stall[2])) begin
 		pc_o		<= 0;
 		rd_idx_o	<= 0;
 		rd_we_o		<= 0;
@@ -38,9 +41,10 @@ always @(posedge clk or posedge rst) begin
 		offset_o	<= 0;
 		br_o		<= 0;
 		zero_en_o	<= 0;
+		data_o		<= 0;
 		data_we_o	<= 0;
 		data_re_o	<= 0;
-	end else begin
+	end else if (!stall[1]) begin
 		pc_o		<= pc_i;
 		rd_idx_o	<= rd_idx_i;
 		rd_we_o		<= rd_we_i;
@@ -50,6 +54,7 @@ always @(posedge clk or posedge rst) begin
 		offset_o	<= offset_i;
 		br_o		<= br_i;
 		zero_en_o	<= zero_en_i;
+		data_o		<= data_i;
 		data_we_o	<= data_we_i;
 		data_re_o	<= data_re_i;
 	end
