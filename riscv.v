@@ -4,6 +4,9 @@
 `include "riscv_ex.v"
 `include "riscv_wb.v"
 `include "riscv_register.v"
+`include "riscv_id_ex.v"
+`include "riscv_ex_mem.v"
+`include "riscv_mem_wb.v"
 
 module riscv(
 	input	wire		clk,
@@ -22,24 +25,50 @@ module riscv(
 	output	wire	[31:0]	data_o		// data to data_mem
 );
 
-wire			br;		// branch signal
-wire	[`InstAddrBus]	pc_next;	// next value of program counter
-wire	[`RegBus]	rs1_val;	// register 1 value
-wire	[`RegBus]	rs2_val;	// register 2 value
-wire	[`RegAddrBus]	rs1_idx;	// register 1 index
-wire	[`RegAddrBus]	rs2_idx;	// register 2 index
-wire	[`RegAddrBus]	rd_idx;		// write register index
-wire	[`RegBus]	rd_val;		// write register value
-wire			rd_we;		// write register enable
-wire	[`AluOpBus]	alu_op;		// ALU operation code
-wire	[`RegBus]	alu_a;		// ALU input A
-wire	[`RegBus]	alu_b;		// ALU input B
-wire	[`RegBus]	offset;		// immediate value
-wire			zero_en;	// jump if zero enable
-wire			data_re;	// read data from data memory
+wire			br_o_id;	// branch signal
+wire			br_i_ex;
+wire	[`InstAddrBus]	pc_i_ex;	// program counter
+wire	[`InstAddrBus]	pc_next;
+wire	[`RegBus]	rs1_val_id;	// register 1 value
+wire	[`RegBus]	rs2_val_id;	// register 2 value
+wire	[`RegAddrBus]	rs1_idx_id;	// register 1 index
+wire	[`RegAddrBus]	rs2_idx_id;	// register 2 index
+wire	[`RegAddrBus]	rd_idx_o_id;	// write register index
+wire	[`RegAddrBus]	rd_idx_ex;
+wire	[`RegAddrBus]	rd_idx_mem;
+wire	[`RegAddrBus]	rd_idx_wb;
+wire	[`RegBus]	rd_val_wb;	// write register value
+wire			rd_we_o_id;	// write register enable
+wire			rd_we_ex;
+wire			rd_we_mem;
+wire			rd_we_wb;
+wire	[`AluOpBus]	alu_op_o_id;	// ALU operation code
+wire	[`AluOpBus]	alu_op_i_ex;
+wire	[`RegBus]	alu_a_o_id;	// ALU input A
+wire	[`RegBus]	alu_a_i_ex;
+wire	[`RegBus]	alu_b_o_id;	// ALU input B
+wire	[`RegBus]	alu_b_i_ex;
+wire	[`RegBus]	offset_o_id;	// immediate value
+wire	[`RegBus]	offset_i_ex;
+wire			zero_en_o_id;	// jump if zero enable
+wire			zero_en_i_ex;
+wire			data_we_o_id;	// write enable to data memory
+wire			data_we_ex;
+wire			data_re_o_id;	// read data from data memory
+wire			data_re_ex;
+wire			data_re_mem;
+wire	[`MemAddrBus]	data_addr_o_ex;	// address to data memory
+wire	[`MemAddrBus]	data_addr_i_wb;	// address to data memory
+wire			data_we_i_wb;	// write enable to data memory
+wire			data_re_i_wb;	// write register enable
 
 assign	inst_ce_o = 1;			// always read instruction memory
 assign	data_ce_o = 1;			// always enable data memory
+
+//--------------------------------------------------------------------
+// Stall control
+//--------------------------------------------------------------------
+// To be implemented
 
 //--------------------------------------------------------------------
 // Instruction Fetch Unit
@@ -47,10 +76,12 @@ assign	data_ce_o = 1;			// always enable data memory
 riscv_if IF(
 	.clk(clk),
 	.rst(rst),
-	.br_i(br),
+	.br_i(br_i_if),
 	.pc_i(pc_next),
 	.pc_o(inst_addr_o)
 );
+
+// Stage IF already incoporated register IF-ID register
 
 //--------------------------------------------------------------------
 // Instruction Decode Unit
@@ -58,20 +89,20 @@ riscv_if IF(
 riscv_id ID(
 	.pc_i(inst_addr_o),
 	.inst_i(inst_i),
-	.rs1_val_i(rs1_val),
-	.rs2_val_i(data_o),
-	.rs1_idx_o(rs1_idx),
-	.rs2_idx_o(rs2_idx),
-	.rd_idx_o(rd_idx),
-	.rd_we_o(rd_we),
-	.alu_op_o(alu_op),
-	.alu_a_o(alu_a),
-	.alu_b_o(alu_b),
-	.offset_o(offset),
-	.br_o(br),
-	.zero_en_o(zero_en),
-	.data_we_o(data_we_o),
-	.data_re_o(data_re)
+	.rs1_val_i(rs1_val_id),
+	.rs2_val_i(rs2_val_id),
+	.rs1_idx_o(rs1_idx_id),
+	.rs2_idx_o(rs2_idx_id),
+	.rd_idx_o(rd_idx_o_id),
+	.rd_we_o(rd_we_o_id),
+	.alu_op_o(alu_op_o_id),
+	.alu_a_o(alu_a_o_id),
+	.alu_b_o(alu_b_o_id),
+	.offset_o(offset_o_id),
+	.br_o(br_o_id),
+	.zero_en_o(zero_en_o_id),
+	.data_we_o(data_we_o_id),
+	.data_re_o(data_re_o_id)
 );
 
 //--------------------------------------------------------------------
@@ -80,28 +111,94 @@ riscv_id ID(
 riscv_register REG(
 	.clk(clk),
 	.rst(rst),
-	.rs1_idx_i(rs1_idx),
-	.rs2_idx_i(rs2_idx),
-	.rd_idx_i(rd_idx),
-	.rd_we_i(rd_we),
-	.rd_val_i(rd_val),
-	.rs1_val_o(rs1_val),
-	.rs2_val_o(data_o)
+	.rs1_idx_i(rs1_idx_id),
+	.rs2_idx_i(rs2_idx_id),
+	.rd_idx_i(rd_idx_wb),
+	.rd_we_i(rd_we_wb),
+	.rd_val_i(rd_val_wb),
+	.rs1_val_o(rs1_val_id),
+	.rs2_val_o(rs2_val_id)
+);
+
+//--------------------------------------------------------------------
+// ID-EX Register
+//--------------------------------------------------------------------
+riscv_id_ex ID_EX(
+	.clk(clk),
+	.rst(rst),
+	.pc_i(inst_addr_o),
+	.rd_idx_i(rd_idx_o_id),
+	.rd_we_i(rd_we_o_id),
+	.alu_op_i(alu_op_o_id),
+	.alu_a_i(alu_a_o_id),
+	.alu_b_i(alu_b_o_id),
+	.offset_i(offset_o_id),
+	.br_i(br_o_id),
+	.zero_en_i(zero_en_o_id),
+	.data_we_i(data_we_o_id),
+	.data_re_i(data_re_o_id),
+	.pc_o(pc_i_ex),
+	.rd_idx_o(rd_idx_ex),
+	.rd_we_o(rd_we_ex),
+	.alu_op_o(alu_op_i_ex),
+	.alu_a_o(alu_a_i_ex),
+	.alu_b_o(alu_b_i_ex),
+	.offset_o(offset_i_ex),
+	.br_o(br_i_ex),
+	.zero_en_o(zero_en_i_ex),
+	.data_we_o(data_we_ex),
+	.data_re_o(data_re_ex)
 );
 
 //--------------------------------------------------------------------
 // Execute Unit
 //--------------------------------------------------------------------
 riscv_ex EX(
-	.pc_i(inst_addr_o),
-	.alu_op_i(alu_op),
-	.alu_a_i(alu_a),
-	.alu_b_i(alu_b),
-	.offset_i(offset),
-	.br_i(br),
-	.zero_en_i(zero_en),
+	.pc_i(pc_i_ex),
+	.alu_op_i(alu_op_i_ex),
+	.alu_a_i(alu_a_i_ex),
+	.alu_b_i(alu_b_i_ex),
+	.offset_i(offset_i_ex),
+	.br_i(br_i_ex),
+	.zero_en_i(zero_en_i_ex),
 	.pc_o(pc_next),
+	.data_addr_o(data_addr_o_ex)
+);
+
+//--------------------------------------------------------------------
+// EX-MEM Register
+//--------------------------------------------------------------------
+riscv_ex_mem EX_MEM(
+	.clk(clk),
+	.rst(rst),
+	.rd_idx_i(rd_idx_ex),
+	.rd_we_i(rd_we_ex),
+	.data_we_i(data_we_ex),
+	.data_re_i(data_re_ex),
+	.data_addr_i(data_addr_o_ex),
+	.rd_idx_o(rd_idx_mem),
+	.rd_we_o(rd_we_mem),
+	.data_we_o(data_we_o),
+	.data_re_o(data_re_mem),
 	.data_addr_o(data_addr_o)
+);
+
+//--------------------------------------------------------------------
+// MEM-WB Register
+//--------------------------------------------------------------------
+riscv_mem_wb MEM_WB(
+	.clk(clk),
+	.rst(rst),
+	.rd_idx_i(rd_idx_mem),
+	.rd_we_i(rd_we_mem),
+	.data_addr_i(data_addr_o),
+	.data_we_i(data_we_o),
+	.data_re_i(data_re_mem),
+	.rd_idx_o(rd_idx_wb),
+	.rd_we_o(rd_we_wb),
+	.data_addr_o(data_addr_i_wb),
+	.data_we_o(data_we_i_wb),
+	.data_re_o(data_re_i_wb)
 );
 
 //--------------------------------------------------------------------
@@ -109,10 +206,10 @@ riscv_ex EX(
 //--------------------------------------------------------------------
 riscv_wb WB(
 	.data_i(data_i),
-	.data_addr_i(data_addr_o),
-	.data_we_i(data_we_o),
-	.data_re_i(data_re),
-	.rd_val_o(rd_val)
+	.data_addr_i(data_addr_i_wb),
+	.data_we_i(data_we_i_wb),
+	.data_re_i(data_re_i_wb),
+	.rd_val_o(rd_val_wb)
 );
 
 endmodule
