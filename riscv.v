@@ -217,7 +217,6 @@ riscv_mem_wb MEM_WB(
 	.rd_idx_i(rd_idx_mem),
 	.rd_we_i(rd_we_mem),
 	.data_addr_i(data_addr_o),
-	.data_we_i(data_we_o),
 	.data_re_i(data_re_mem),
 	.rd_idx_o(rd_idx_wb),
 	.rd_we_o(rd_we_wb),
