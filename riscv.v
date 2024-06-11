@@ -110,7 +110,6 @@ riscv_ex EX(
 riscv_wb WB(
 	.data_i(data_i),
 	.data_addr_i(data_addr_o),
-	.data_we_i(data_we_o),
 	.data_re_i(data_re),
 	.rd_val_o(rd_val)
 );

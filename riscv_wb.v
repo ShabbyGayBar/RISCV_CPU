@@ -3,7 +3,6 @@
 module riscv_wb(
 	input		[`MemDataBus]	data_i,
 	input		[`RegBus]	data_addr_i,
-	input				data_we_i,
 	input				data_re_i,
 	output	reg	[`RegBus]	rd_val_o
 );
