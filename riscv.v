@@ -79,11 +79,14 @@ assign	data_ce_o = 1;			// always enable data memory
 //--------------------------------------------------------------------
 riscv_stall STALL(
 	.rst(rst),
-	.req_if(1'b0),
-	.req_id(rs_re_id && data_re_ex && (rs1_idx_id == rd_idx_ex || rs2_idx_id == rd_idx_ex)),
-	// stall if register read && last instruction is load type && load data is not ready
-	.req_ex(br_o_ex),	// stall if branch instruction
-	.req_mem(1'b0),
+	.inst_busy_i(1'b0),
+	.data_busy_i(1'b0),
+	.rs_re_id_i(rs_re_id),
+	.rs1_idx_id_i(rs1_idx_id),
+	.rs2_idx_id_i(rs2_idx_id),
+	.is_load_ex_i(data_re_ex),
+	.rd_idx_ex_i(rd_idx_ex),
+	.br_i(br_o_ex),
 	.stall(stall)
 );
 
