@@ -8,6 +8,7 @@
 `include "riscv_ex_mem.v"
 `include "riscv_mem_wb.v"
 `include "riscv_stall.v"
+`include "riscv_forward.v"
 
 module riscv(
 	input	wire		clk,
@@ -33,7 +34,9 @@ wire			br_o_ex;
 wire	[`InstAddrBus]	pc_i_ex;	// program counter
 wire	[`InstAddrBus]	pc_next;
 wire	[`RegBus]	rs1_val_id;	// register 1 value
+wire	[`RegBus]	rs1_val_reg;
 wire	[`RegBus]	rs2_val_id;	// register 2 value
+wire	[`RegBus]	rs2_val_reg;
 wire	[`RegAddrBus]	rs1_idx_id;	// register 1 index
 wire	[`RegAddrBus]	rs2_idx_id;	// register 2 index
 wire			rs_re_id;	// register read enable
@@ -76,12 +79,35 @@ assign	data_ce_o = 1;			// always enable data memory
 //--------------------------------------------------------------------
 riscv_stall STALL(
 	.rst(rst),
-	.req_if(1'b0),		// stall if branch instruction
+	.req_if(1'b0),
 	.req_id(rs_re_id && data_re_ex && (rs1_idx_id == rd_idx_ex || rs2_idx_id == rd_idx_ex)),
 	// stall if register read && last instruction is load type && load data is not ready
-	.req_ex(br_o_ex),
-	.req_mem(1'b0),		// stall if load type instruction
+	.req_ex(br_o_ex),	// stall if branch instruction
+	.req_mem(1'b0),
 	.stall(stall)
+);
+
+//--------------------------------------------------------------------
+// Data Forwarding
+//--------------------------------------------------------------------
+riscv_forward FORWARD(
+	.rd_we_ex_i(rd_we_ex),
+	.rd_idx_ex_i(rd_idx_ex),
+	.rd_val_ex_i(data_addr_o_ex),
+	.rd_we_mem_i(rd_we_mem),
+	.rd_idx_mem_i(rd_idx_mem),
+	.data_re_mem_i(data_re_mem),
+	.data_addr_mem_i(data_addr_o),
+	.data_mem_i(data_i),
+	.rd_we_wb_i(rd_we_wb),
+	.rd_idx_wb_i(rd_idx_wb),
+	.rd_val_wb_i(rd_val_wb),
+	.rs1_idx_id_i(rs1_idx_id),
+	.rs1_val_reg_i(rs1_val_reg),
+	.rs2_idx_id_i(rs2_idx_id),
+	.rs2_val_reg_i(rs2_val_reg),
+	.rs1_val_o(rs1_val_id),
+	.rs2_val_o(rs2_val_id)
 );
 
 //--------------------------------------------------------------------
@@ -133,8 +159,8 @@ riscv_register REG(
 	.rd_idx_i(rd_idx_wb),
 	.rd_we_i(rd_we_wb),
 	.rd_val_i(rd_val_wb),
-	.rs1_val_o(rs1_val_id),
-	.rs2_val_o(rs2_val_id)
+	.rs1_val_o(rs1_val_reg),
+	.rs2_val_o(rs2_val_reg)
 );
 
 //--------------------------------------------------------------------
