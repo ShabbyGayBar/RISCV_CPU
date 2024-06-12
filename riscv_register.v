@@ -49,7 +49,7 @@ always @(posedge clk or posedge rst) begin
 		register[29] <= 32'b0;
 		register[30] <= 32'b0;
 		register[31] <= 32'b0;
-	end else if (rd_we_i) begin
+	end else if (rd_we_i && rd_idx_i != 0) begin
 		register[rd_idx_i] <= rd_val_i;
 	end
 end
