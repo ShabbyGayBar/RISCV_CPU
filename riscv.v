@@ -61,6 +61,7 @@ wire			zero_en_o_id;	// jump if zero enable
 wire			zero_en_i_ex;
 wire	[`MemDataBus]	data_o_id;	// data to data memory
 wire	[`MemDataBus]	data_ex;
+wire	[`MemDataBus]	data_i_wb;	// data from data memory
 wire			data_we_o_id;	// write enable to data memory
 wire			data_we_ex;
 wire			data_re_o_id;	// read data from data memory
@@ -245,10 +246,12 @@ riscv_mem_wb MEM_WB(
 	.stall(stall),
 	.rd_idx_i(rd_idx_mem),
 	.rd_we_i(rd_we_mem),
+	.data_i(data_i),
 	.data_addr_i(data_addr_o),
 	.data_re_i(data_re_mem),
 	.rd_idx_o(rd_idx_wb),
 	.rd_we_o(rd_we_wb),
+	.data_o(data_i_wb),
 	.data_addr_o(data_addr_i_wb),
 	.data_re_o(data_re_i_wb)
 );
@@ -257,7 +260,7 @@ riscv_mem_wb MEM_WB(
 // Write Back Unit
 //--------------------------------------------------------------------
 riscv_wb WB(
-	.data_i(data_i),
+	.data_i(data_i_wb),
 	.data_addr_i(data_addr_i_wb),
 	.data_re_i(data_re_i_wb),
 	.rd_val_o(rd_val_wb)
