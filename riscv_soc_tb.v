@@ -17,8 +17,8 @@ module riscv_soc_tb();
       
   initial begin
             rst = 1'b1;
-    #300    rst= 1'b0;
-    #100000 $display("---     result is %d         ---\n", verify);
+    #100    rst= 1'b0;
+    #10000000 $display("---     result is %d         ---\n", verify);
 	#1000   $stop;   
   end
        
