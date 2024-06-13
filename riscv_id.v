@@ -183,7 +183,7 @@ always @(*) begin
 		alu_op_o	= `ALU_ADD;
 		alu_a_o		= pc_i;
 		alu_b_o		= 4;
-		offset_o	= I_imm - pc_i;
+		offset_o	= I_imm + rs1_val_i - pc_i;
 		br_o		= 1'b1;
 		zero_en_o	= 1'b0;
 	end else if ((inst_i & `INST_LUI_MASK) == `INST_LUI) begin // lui
