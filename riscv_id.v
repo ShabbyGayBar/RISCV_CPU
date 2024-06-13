@@ -31,7 +31,7 @@ wire	[`RegBus]	J_imm;
 wire	[`RegBus]	U_imm;
 
 assign	I_imm	= {{20{inst_i[31]}}, inst_i[31:20]};
-assign	S_imm	= {{19{inst_i[31]}}, inst_i[31:25], inst_i[11:7], 1'b0};
+assign	S_imm	= {{20{inst_i[31]}}, inst_i[31:25], inst_i[11:7]};
 assign	B_imm	= {{20{inst_i[31]}}, inst_i[7], inst_i[30:25], inst_i[11:8], 1'b0};
 assign	J_imm	= {{12{inst_i[31]}}, inst_i[19:12], inst_i[20], inst_i[30:21], 1'b0};
 assign	U_imm	= {inst_i[31:12], 12'b0};
