@@ -174,14 +174,14 @@ always @(*) begin
 		offset_o	= J_imm;
 		br_o		= 1'b1;
 		zero_en_o	= 1'b0;
-	end /*else if ((inst_i & `INST_JALR_MASK) == `INST_JALR) begin // jalr
+	end else if ((inst_i & `INST_JALR_MASK) == `INST_JALR) begin // jalr
 		alu_op_o	= `ALU_ADD;
 		alu_a_o		= pc_i;
 		alu_b_o		= 4;
-		offset_o	= I_imm;
+		offset_o	= I_imm + rs1_val_i - pc_i;
 		br_o		= 1'b1;
 		zero_en_o	= 1'b0;
-	end*/ else if ((inst_i & `INST_LUI_MASK) == `INST_LUI) begin // lui
+	end else if ((inst_i & `INST_LUI_MASK) == `INST_LUI) begin // lui
 		alu_op_o	= `ALU_ADD;
 		alu_b_o		= U_imm;
 	end else if ((inst_i & `INST_AUIPC_MASK) == `INST_AUIPC) begin // auipc
