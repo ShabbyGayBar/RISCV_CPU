@@ -66,7 +66,7 @@ jal	// J-type
 	\label{fig:pipeline_stages}
 \end{figure}
 
-在顶层设计中，每个流水段的组合逻辑被整合为一个模块。例如指令解码器和立即数生成器集成在 riscv\_id.v 中，ALU 和 EX 阶段的 PC 生成单元集成在 riscv\_ex.v 中。而寄存器被单独实现。这样的设计使得每个流水段模块可以独立测试，方便调试。
+在顶层设计中，每个流水段的组合逻辑被整合为一个模块。例如指令解码器和立即数生成器集成在 \texttt{riscv\_id.v} 中，ALU 和 EX 阶段的 PC 生成单元集成在 \texttt{riscv\_ex.v} 中。而寄存器被单独实现。这样的设计使得每个流水段模块可以独立测试，方便调试。
 
 \subsection{单周期处理器}
 
@@ -238,7 +238,7 @@ WB 模块实际上就是一个2输入1输出的多路选择器 (Multiplexer, MUX
 
 \subsection{代码例化层次}
 
-本项目的测试 (Testbench) 的顶层代码为 riscv\_soc\_tb.v，其中调用了处理器的顶层模块 riscv.v，以及指令 (inst\_mem) 和数据存储器 (data\_mem)，例化层次如图\ref{fig:hierarchy}所示。
+本项目的测试 (Testbench) 的顶层代码为 \texttt{riscv\_soc\_tb.v}，其中调用了处理器的顶层模块 \texttt{riscv.v}，以及指令 (inst\_mem) 和数据存储器 (data\_mem)，例化层次如图\ref{fig:hierarchy}所示。
 
 \begin{figure}[!htp]
 	\centering
@@ -247,7 +247,7 @@ WB 模块实际上就是一个2输入1输出的多路选择器 (Multiplexer, MUX
 	\label{fig:hierarchy}
 \end{figure}
 
-其中，riscv\_soc\_tb.v 和存储器的接口与代码由课程组提供，不得更改，但是指令存储器和数据存储器的内容可以自行修改。
+其中，\texttt{riscv\_soc\_tb.v} 和存储器的接口与代码由课程组提供，不得更改，但是指令存储器和数据存储器的内容可以自行修改。
 
 \subsection{测试程序}
 
@@ -283,7 +283,36 @@ WB 模块实际上就是一个2输入1输出的多路选择器 (Multiplexer, MUX
 
 从波形图中可以看出，x10-x16寄存器最后的值都是排好序的数组，说明单周期处理器和流水线处理器均能正确执行快速排序的测试程序。
 
+放大波形图\ref{fig:wave_pipeline}至\SI{19.30}{\ns}附近，如图\ref{fig:pipeline_stall}所示，此时流水线正在执行如下指令:
+
+\begin{codeblock}
+0x0008AF03	// lw x30, 0(x17)
+0x01E82023	// sw x30, 0(x16)
+0x01C8A023	// sw x28, 0(x17)
+0x00138393	// addi x7, x7, 1
+0xFC0006E3	// beq x0, x0, LOOP
+//0x00130F13	// addi x30, x6, 1, NOT EXECUTED DUE TO STALL SIGNAL
+0x02C38C63	// beq x7, x12, LOOP_DONE
+\end{codeblock}
+
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=\textwidth]{wave_pipeline_stall.png}
+	\caption{流水线处理器停顿示意图}
+	\label{fig:pipeline_stall}
+\end{figure}
+
+根据图\ref{fig:pipeline_stall}可以发现，当执行第2条 sw 指令时，前一条 lw 指令的结果还未读取，因此流水线处理器不得不产生 stall 信号，在此处停顿一周期，等待数据读取至 MEM 流水段的 data\_i 中，并通过前递逻辑传递给 ID 流水段，从而继续执行 sw 指令。在波形图中体现为 0x01E82023 指令在 stall 信号变为 0x0011 后多占用了一个周期。
+
+而当执行第5条 beq 指令时，由于是否跳转的判断需要在 EX 阶段，即下下个周期才能得出，因此流水线处理器在此处产生 0x0010 的 stall 信号，停顿一周期，等待判断结果。但是此时下一条指令 (addi x30, x6, 1) 已经由 IF 流水段读取，因此需要在此指令的 ID 阶段插入一个气泡，将 ID-EX 寄存器清零，使其成为 nop，实现停顿。
+
 对比两波形图可以发现，在\SI{10}{\GHz}时钟频率下，单周期处理器完成测试程序执行所需的时间为\SI{66.75}{\ns}，而流水线处理器执行完成所需的时间为\SI{75.50}{\ns}，流水线处理器的执行时间比单周期处理器更长，这似乎与流水线处理器的指令吞吐量更高的设计初衷相悖。然而，这是因为流水线处理器由于每个时钟周期内的延迟更少，可以有更高的时钟频率，而测试中这一优势并未体现，而且由于流水线处理器存在数据冒险的情况，需要停顿，因此导致流水线处理器的执行时间更长。假设流水线处理器的时钟频率提高到\SI{50}{\GHz}，则流水线处理器的执行时间会压缩到\SI{15.10}{\ns}，大大快于单周期处理器。
+
+\section{总结}
+
+本项目实现了一个单周期处理器和一个5级流水线处理器，支持 RV32I Base Integer 指令集内的所有指令。通过仿真测试，验证了两种处理器的功能正确性。流水线处理器的设计使得其在时钟频率更高的情况下能够有更高的性能，但是由于数据冒险的存在，可能导致流水线处理器的延迟更长。
+
+本项目已发表至 \href{https://github.com/ShabbyGayBar/RISCV_CPU}{GitHub}。
 
 \nocite{*}
 \printbibliography
