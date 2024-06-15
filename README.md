@@ -11,7 +11,10 @@ This is a term project of MST3305-01, SJTU, 2024 spring.
   * B type: beq, bne, blt, bge, bltu, bgeu
   * U type: lui, auipc
   * J type: jal
-* A testbench program (a quick sort algorithm in ./single/machinecode.txt and ./pipeline/machinecode.txt)
+* A testbench program (a quick sort algorithm)
+  * Assembly code in ./test/quick_sort.asm
+  * Machine code in ./single/machinecode.txt and ./pipeline/machinecode.txt
+  * Output waveform in ./test/wave_single.vcd and ./test/wave_pipeline.vcd
 * A Latex report (written in Mandarin, located in ./report)
 
 ## Testbench
